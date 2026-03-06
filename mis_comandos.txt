@@ -1,0 +1,64 @@
+    1  code .
+    2   git config --global user.name "AldoPydev"
+    3  git config --global user.email "aldo.desingweb@gmail.com"
+    4  ls -al ~/.ssh
+    5  eval "$(ssh-agent -s)"
+    6  touch ~/.ssh/config
+    7  ssh-add --apple-use-keychain ~/.ssh/id_rsa
+    8  ssh -T git@github.com
+    9  ssh -T git@github.com
+   10  Generating public/private ALGORITHM key pair
+   11  clip < ~/.ssh/id_rsa.pub
+   12  ssh -T git@github.com
+   13  ssh -T git@github.com
+   14  pwd
+   15  cd..
+   16  cd [200~E:\Documentos\WEB\Proyectos\Fast\crud~
+   17  cd E:\Documentos\WEB\Proyectos\Fast\crud
+   18  cd.
+   19  info
+   20  git add .
+   21  git commit -m "mi primer intento"
+   22  git status
+   23  git add
+   24  git add .
+   25  git status
+   26  git add .
+   27  git commit -m "septimo intento"
+   28  git add .
+   29  git commit -m "Subiendo mi proyecto Practica-CRUD"
+   30  git branch -M main
+   31  git push -u origin main --force
+   32  git branch -m main
+   33  git status
+   34  git ls
+   35  ls
+   36  git add .
+   37  git status
+   38  git add main.py 
+   39  git status
+   40  git add .
+   41  git status
+   42  git commit -m "primer intento de subir"
+   43  git remote add origin git@github.com:AldoPydev/Practica-CRUD.git
+   44  git push -u origin main
+   45  git pull
+   46  git push -u origin main
+   47  git status
+   48  git add .
+   49  git commit -m "segundo comit"
+   50  git status
+   51  git status
+   52  git add prueba.txt 
+   53  git commit -m "tercer intento de subir"
+   54  git remote add origin git@github.com:AldoPydev/Practica-CRUD.git
+   55  git push -u origin main
+   56  git add remote origin 
+   57  git remote -v
+   58  git fetch
+   59  git push 
+   60  git push --set-upstream origin main
+   61  git pull
+   62  git branch --set-upstream-to=origin/<branch> main
+   63  git push -u origin main --force
+   64  history > mis_comandos.txt
