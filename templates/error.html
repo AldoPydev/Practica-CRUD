@@ -1,0 +1,13 @@
+<!-- LLamamos el template base -->
+{% extends "base.html" %}
+
+
+<!-- Indicamos el nombre y el final del bloque a editar el archivo base -->
+{% block content %}
+  <article class="content-section py-3 px-4 mb-4">
+    <h1>
+      <a class="article-title" href="#">Oops... {{ status_code }} Error</a>
+    </h1>
+    <p class="article-content">{{ message }}</p>
+  </article>
+{% endblock content %}
