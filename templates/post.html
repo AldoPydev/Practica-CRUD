@@ -1,8 +1,10 @@
 <!-- LLamamos el template base -->
 {% extends "base.html" %}
+
 {% block content %}
   <article class="content-section py-3 px-4 mb-4">
     <div class="d-flex align-items-start gap-4">
+      <!-- Muestra la imagen del autor -->
       <img class="rounded-circle article-img flex-shrink-0"
            src="{{ url_for('static', path='img/default.jpg') }}"
            alt="{{ post.author }}'s profile picture"
@@ -11,12 +13,19 @@
            loading="lazy">
       <div class="flex-grow-1">
         <div class="article-metadata mb-2">
+          <!-- muestra el nombre del autor -->
           <a class="me-2" href="#">{{ post.author }}</a>
           <small class="text-body-secondary">{{ post.date_posted }}</small>
         </div>
-        <h2 class="article-title">{{ post.title }}</h2>
+
+        <!-- LLamamos muestra el titulo del post -->
+        <h2 class="article-title" href="{{ url_for('post_page', post_id=post.id) }}">{{ post.title }}</h2>
+
+        <!-- LLamamos muestra el contenido del post -->
         <p class="article-content">{{ post.content }}</p>
-        <!-- Only show edit/delete options if the user is the author -->
+
+
+        <!--  edit/delete options if the user is the author -->
         <!-- TODO: Add user authentication and authorization -->
         <div class="post-actions mt-3 pt-3 border-top">
           <a class="btn btn-outline-secondary me-1" href="#">Edit Post</a>
@@ -25,12 +34,12 @@
                   data-bs-toggle="modal"
                   data-bs-target="#deleteModal">Delete Post</button>
         </div>
-        <!-- TODO: Add user authentication and authorization -->
+  
       </div>
     </div>
   </article>
 
-  <!-- Delete Confirmation Modal -->
+  <!-- Modal  de confirmacion eliminado-->
   <div class="modal fade"
        id="deleteModal"
        tabindex="-1"
@@ -47,7 +56,7 @@
         </div>
         <!-- TODO: <form action="#" method="post"> -->
         <form action="#">
-          <div class="modal-body">Are you sure you want to delete this post? This action cannot be undone.</div>
+          <div class="modal-body">¿Estás seguro de que quieres eliminar esta publicación?</div>
           <div class="modal-footer">
             <button type="button"
                     class="btn btn-outline-secondary"

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Site Info -->
+    <!-- ESTABLECER UN TITULO ESPECIFICO -->
     {% if title %}
       <title>FastAPI Blog - {{ title }}</title>
     {% else %}
@@ -39,9 +39,9 @@
   <body class="d-flex flex-column min-vh-100">
     <header class="site-header">
       <nav class="navbar navbar-expand-md bg-steel fixed-top"
-           data-bs-theme="dark">
+          data-bs-theme="dark">
         <div class="container">
-            <!-- "{{ url_for('home') }}" Uso de url_for con el parametro de la ruta raiz 'home' -->
+    <!-- "{{ url_for('home') }}" Uso de url_for con el parametro de la ruta raiz 'home' -->
             
           <a class="navbar-brand me-4" href="{{ url_for('home') }}">FastAPI Blog</a>
           <button class="navbar-toggler"

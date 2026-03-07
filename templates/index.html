@@ -5,7 +5,7 @@
 <!-- Indicamos el nombre y el final del bloque a editar el archivo base -->
 {% block content %}
 
-    {% for post in posts %} <!-- Recorrer las puclicaciones existentes -->
+    {% for post in posts %} <!-- Recorrer las puclicaciones existentes  para mostrarlas-->
     <article class="content-section py-3 px-4 mb-4">
       <div class="d-flex align-items-start gap-4">
         <img class="rounded-circle article-img flex-shrink-0"
@@ -22,12 +22,13 @@
           <h2> 
             <!-- el titulo de la publicacion en home sera url_for para redireccionar 
              a la ruta, y pasar el parametro del id de la publicacion correspondiente-->
-            <a class="article-title" href="{{ url_for("post_page", post_id=post.id) }}">{{ post.title }}</a>
+            <a class="article-title" href="{{ url_for('post_page', post_id=post.id) }}">{{ post.title }}</a>
           </h2>
           <p class="article-content">{{ post.content }}</p>
         </div>
       </div>
     </article>
+
   {% endfor %} <!-- final del for -->
 {% endblock %} <!-- final del bloque -->
 

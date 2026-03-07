@@ -14,21 +14,22 @@ from fastapi import HTTPException, status
 from fastapi.exceptions import RequestValidationError 
 # respuetas JSON para devolver espuestas desde el controlador de excepciones
 from fastapi.responses import JSONResponse 
-# manejo de errores desde la web frontend
+# manejo de errores desde la web frontend e indicar el error 
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
-#inicamos app FastAPI
+#inicializar app FastAPI
 app =  FastAPI()
 
-# montar directorio estatico 
+#Indicar a FastAPI donde encontrar los directorios estatucis (CSS, JS, IMG)
 # (ruta de accesos de app / ruta de la carpeta en proyecto / nombre de referencia)
 app.mount("/static", StaticFiles(directory="crud/static"), name="static")
+
 
 #Indicar a FastAPI donde encontrar las plantillas de Jinja2
 templates = Jinja2Templates(directory="crud/templates")
 
-# directorio de ejemplo
+# directorio de ejemplo para publicaciones
 posts: list[dict] = [
     {
         "id": 1,
@@ -58,29 +59,37 @@ async def root():
 """incluinclude_in_schema=False, no incluira en la documentacion la ruta
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)"""
 
-# ruta raiz / indicar que utilizara HTML / ruta raiz es igual home
+
+
+
+
+# ruta raiz / indicar que utilizara HTML / ruta raiz es igual home en name
 @app.get("/", response_class=HTMLResponse, name="home")
 #async - funcion asincrona para enviar y resivir datos
 
-async def home(request: Request): #Establecer una parametro de solicitud, Jinja2 requiere
+#Establecer una parametro de solicitud, Jinja2 requiere
+async def home(request: Request): 
     
-    #Devolvemos la solicitud request con el archivo de platilla
+        #Devolvemos la solicitud request con el archivo de platilla / diccionario de publicaciones / los titulos de cada pulicación
+                                                        #solicitud request / posts de diccionario posts / titulos a home
         #return templates.TemplateResponse(request=request, name="index.html", {"request": request, "posts": "posts", "title": "Home"})
         return templates.TemplateResponse("index.html", {"request": request, "posts": posts, "title": "Home"},)
 
-#Ruta por ID o parametro de ruta
 
+
+
+#Ruta por ID o parametro de ruta
 @app.get("/posts/{post_id}", include_in_schema=False)
 def post_page(request: Request, post_id: int): #buscar publicacion especifica por id / entero
     #recorer publicaciones, buscando la solicitada
     for post in posts:
         #si la publicacion es encontrada
         if post.get("id") == post_id:
-            #establecer titulo de la publicacion / solo pos primeros 50 caracteres del titulo
+            #establecer titulo de la publicacion / solo los primeros 50 caracteres del titulo
             title = post["title"][:50]
-            #retornara la publicacion buscada
+            #retornara la publicacion buscada - plantilla / solicitud request / post de direccioanrio / titulo del post
             return templates.TemplateResponse("post.html", {"request": request, "post": post, "title": title},)
-        #generar excepcyion http 404
+        #generar excepcyion http 404 indicando que no se encontro la busqueda
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post no encontrado")
 
 
@@ -90,7 +99,7 @@ def post_page(request: Request, post_id: int): #buscar publicacion especifica po
 # se guarda y recibe en request: Request,.... 
 def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
     message = ( #configurar el mensaje
-        exception.detail #detalles del error
+        exception.detail #mostrar detalles del error
         if exception.detail
         #de lo contrario establecemos un mensaje 
         else "Error. Por favor comprueba tu solicitud de nuevo."
@@ -125,7 +134,7 @@ def validation_exception_handler(request: Request, exception: RequestValidationE
     #si la ruta de la aplicacion comienza con API
     if request.url.path.startswith("/api"):
         return JSONResponse(
-            #se pasa el codigo del error HTTP
+            #se pasa el codigo del error HTTP en JSON
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             #Mostrar detalles de error de validacion
             content={"detail": exception.errors()},
