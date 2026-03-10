@@ -1,3 +1,4 @@
+from typing import Annotated
 #Importar FastAPI
 from fastapi import FastAPI, Request
 #Importar respuesta HTML
@@ -6,8 +7,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles 
 #importar plantillas Jinja2 (requieren el objeto Request importado arriba)
 from fastapi.templating import Jinja2Templates
-#importar extension HTPP y status para respuestas de error
-from fastapi import HTTPException, status
+#importar extension HTPP y status para respuestas de error / Dependencias 
+from fastapi import HTTPException, status, Depends
 
 #--------controladores de Excepciones de error
 #errores de validacion(si pide int y se recibe string)
@@ -17,19 +18,39 @@ from fastapi.responses import JSONResponse
 # manejo de errores desde la web frontend e indicar el error 
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+#----------------------- Importar Schemas
+from schemas import PostCreate, PostResponse, UserCreate, UserResponse
+
+#----------------------- Importar Modelos
+import models
+
+#----------------------- Importar DB
+# Motor de creacion de tablas, get_db - dependencia de sesiones en BD
+from database import Base, engine, get_db
+
+#----------------------- Importar BD
+# select - consulatas en BD , Session - sesiones en BD
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+#----------------------- Creacion de tables, si no existen
+Base.metadata.create_all(bind=engine)
 
 #inicializar app FastAPI
 app =  FastAPI()
 
+#Colocarl archivos media / staticos que provee el usuario
+app.mount("/media", StaticFiles(directory="media"), name="media")
+
 #Indicar a FastAPI donde encontrar los directorios estatucis (CSS, JS, IMG)
 # (ruta de accesos de app / ruta de la carpeta en proyecto / nombre de referencia)
-app.mount("/static", StaticFiles(directory="crud/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 #Indicar a FastAPI donde encontrar las plantillas de Jinja2
-templates = Jinja2Templates(directory="crud/templates")
+templates = Jinja2Templates(directory="templates")
 
-# directorio de ejemplo para publicaciones
+"""# directorio de ejemplo para publicaciones
 posts: list[dict] = [
     {
         "id": 1,
@@ -46,7 +67,7 @@ posts: list[dict] = [
         "date_posted": "April 21, 2025",
     },
 ]
-
+"""
 
 #Devolver en formato JSON
 """
@@ -67,30 +88,144 @@ async def root():
 @app.get("/", response_class=HTMLResponse, name="home")
 #async - funcion asincrona para enviar y resivir datos
 
+@app.get("/posts", include_in_schema=False, name="posts")
+
 #Establecer una parametro de solicitud, Jinja2 requiere
-async def home(request: Request): 
-    
+async def home(request: Request, db: Annotated[Session, Depends(get_db)]): 
+        result = db.execute(select(models.Post))
+        posts = result.scalars().all()
         #Devolvemos la solicitud request con el archivo de platilla / diccionario de publicaciones / los titulos de cada pulicación
                                                         #solicitud request / posts de diccionario posts / titulos a home
         #return templates.TemplateResponse(request=request, name="index.html", {"request": request, "posts": "posts", "title": "Home"})
         return templates.TemplateResponse("index.html", {"request": request, "posts": posts, "title": "Home"},)
 
+# Crear Usuarios
+@app.post(
+    "/api/users",
+    response_model=UserResponse, #modelo de respuesta 
+    status_code=status.HTTP_201_CREATED #indicando que el recurso se a creado
+)
+
+# Devolver usuario creado con exito
+# Indicamos que la BD depende de una sesion creada o iniciada
+def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]): 
+    # 1 - Verificar si ya existe el usuario
+    # ejecutando una consulta , verificando si el modelo username es igual al username proporcionado
+    result = db.execute(select(models.User).where(models.User.username == user.username))
+    
+    # excepxion su el usuario ya existe
+    existing_user = result.scalars().first()
+    
+    # Respuesta si el usuario ya existe
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail= "El usuario ya existe"
+        )
+        
+    result = db.execute(select(models.User).where(models.User.email == user.email))
+    
+    # excepxion su el usuario ya existe
+    existing_email = result.scalars().first()
+    
+    # Respuesta si el usuario ya existe
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail= "El email ya existe"
+        )
+
+# Creando Usuario nuevo
+    new_user = models.User(
+        username = user.username
+    )
+# Crear usuario en la base de datos
+    db.add(new_user)
+    db.commit() #confirmar en la BD
+    db.refresh(new_user) #refrescar y crar el nuevo usuario
+    return new_user
+
+# Ruta por Id para buscar usuarios
+@app.get("/users/{user_id}", include_in_schema=False, response_model=UserResponse)
+def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]): 
+    
+    # ejecutando una consulta , verificando si el modelo username es igual al username proporcionado
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    
+    # excepxion si el usuario ya existe
+    user = result.scalars().first()
+    
+    # Si el usuario existe
+    if user:
+        return user
+    # Si el usuario NO existe
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= "Usuario no encontrado")
 
 
+## get_ ID - de encontrar el usuario devuelve el diccionario de publicaciones
+@app.get("/api/users/{user_id}/posts", response_model=list[PostResponse])
+def get_user_posts(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    posts = result.scalars().all()
+    return posts
+
+
+# Responder con lista de respuesta de publicaciones en la siguiente ruta
+# Validar que cada publicacion coincida con el esquema de despuesta de publiacion
+@app.get("/api/post", response_model=list[PostResponse])
+def get_posts():
+    return posts
+
+# Crear Publicación
+@app.post(
+    "/api/posts",
+    response_model=PostResponse, #modelo de respuesta 
+    status_code=status.HTTP_201_CREATED #indicando que el recurso se a creado
+)
+
+# Utilizando schema de creacion, validando con nuestra es quema  
+# y devolviendo un error 422, si no es valido
+def create_post(post: PostCreate): 
+    # De ser correcto se genera un nuevo ID manualmente (temporal)
+    new_id = max(p["id"] for p in posts) + 1 if posts else 1
+    # Creamos un dicionarion con los datos validades y necesarios
+    new_post = {
+        "id": new_id,
+        "author": post.author,
+        "title": post.title,
+        "content": post.content,
+        "date_posted": "Marzo 09, 2026",
+    }
+    # Agregando al dicionario de publiacaiones de arriba
+    posts.append(new_post)
+    # Devolvemos la nueva plublicación
+    return new_post
 
 #Ruta por ID o parametro de ruta
 @app.get("/posts/{post_id}", include_in_schema=False)
-def post_page(request: Request, post_id: int): #buscar publicacion especifica por id / entero
-    #recorer publicaciones, buscando la solicitada
-    for post in posts:
-        #si la publicacion es encontrada
-        if post.get("id") == post_id:
-            #establecer titulo de la publicacion / solo los primeros 50 caracteres del titulo
-            title = post["title"][:50]
-            #retornara la publicacion buscada - plantilla / solicitud request / post de direccioanrio / titulo del post
-            return templates.TemplateResponse("post.html", {"request": request, "post": post, "title": title},)
-        #generar excepcyion http 404 indicando que no se encontro la busqueda
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post no encontrado")
+def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get_db)]):
+#se realiza la consulta de publicaciones en la BD por ID
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+#si la publicacion es encontrada
+    if post:
+#establecer titulo de la publicacion / solo los primeros 50 caracteres del titulo
+        title = post.title[:50]
+        #retornara la publicacion buscada - plantilla / solicitud request / post de direccioanrio / titulo del post
+        return templates.TemplateResponse("post.html", {"request": request, "post": post, "title": title},
+        )
+    #generar excepcyion http 404 indicando que no se encontro la busqueda
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publicación no encontrada")
+
+
 
 
 """ CONTROLADOR DE EXCEPCIONES DE VALIDAACION RUTAS DEL NAVEGADOR """
