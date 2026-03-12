@@ -4,22 +4,24 @@
 {% block content %}
   <article class="content-section py-3 px-4 mb-4">
     <div class="d-flex align-items-start gap-4">
-      <!-- Muestra la imagen del autor -->
-      <img class="rounded-circle article-img flex-shrink-0"
-           src="{{ url_for('static', path='img/default.jpg') }}"
-           alt="{{ post.author }}'s profile picture"
+        <!-- obtaner la imagen y el nombre de usuario para la publicacion  -->
+        <img class="rounded-circle article-img flex-shrink-0"
+            src="{{ post.author.image_path }} " 
+            alt="{{ post.author.username }}'s profile picture"
            width="64"
            height="64"
            loading="lazy">
       <div class="flex-grow-1">
         <div class="article-metadata mb-2">
-          <!-- muestra el nombre del autor -->
-          <a class="me-2" href="#">{{ post.author }}</a>
-          <small class="text-body-secondary">{{ post.date_posted }}</small>
+            <!-- REDICCIONAMIENTO AL PERFIL DEL USUARIO  -->
+            <a class="me-2" href ="{{ url_for('user_posts', user_id=post.author.id) }}">{{ post.author.username  }}</a>
+            <!-- ESTABLECER FORMTO DE FECHA CON PYTHON  Mes /Dia /Año-->
+            <small class="text-body-secondary">{{ post.date_posted.strftime('%B %d, %Y') }}</small>
         </div>
 
-        <!-- LLamamos muestra el titulo del post -->
-        <h2 class="article-title" href="{{ url_for('post_page', post_id=post.id) }}">{{ post.title }}</h2>
+            <!-- el titulo de la publicacion en home sera url_for para redireccionar 
+            a la ruta, y pasar el parametro del id de la publicacion correspondiente-->
+            <a class="article-title" href="{{ url_for('post_page', post_id=post.id) }}">{{ post.title }}</a>
 
         <!-- LLamamos muestra el contenido del post -->
         <p class="article-content">{{ post.content }}</p>

@@ -26,18 +26,21 @@ import models
 
 #----------------------- Importar DB
 # Motor de creacion de tablas, get_db - dependencia de sesiones en BD
-from database import Base, engine, get_db
+from database import Base, engine, get_db, SessionLocal
+from sqlalchemy import text
 
 #----------------------- Importar BD
 # select - consulatas en BD , Session - sesiones en BD
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import select, Session
+
 
 #----------------------- Creacion de tables, si no existen
 Base.metadata.create_all(bind=engine)
 
 #inicializar app FastAPI
 app =  FastAPI()
+
+#""" -------------- CARPETAS ESTATICAS Y PLANTILLAS -------------- """
 
 #Colocarl archivos media / staticos que provee el usuario
 app.mount("/media", StaticFiles(directory="media"), name="media")
@@ -49,6 +52,20 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 #Indicar a FastAPI donde encontrar las plantillas de Jinja2
 templates = Jinja2Templates(directory="templates")
+
+#""" ------------------------------------ """
+
+#""" -------------- VERIFICAR LA CONEXION CON BD -------------- """
+@app.get("/db-check")
+def check_db():
+    try:
+        # Intentamos obtener una sesión
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "message": "Database is connected"}
+    except Exception as e:
+        return {"status": "error", "details": str(e)}
+#""" ------------------------------------ """
 
 """# directorio de ejemplo para publicaciones
 posts: list[dict] = [
@@ -69,6 +86,7 @@ posts: list[dict] = [
 ]
 """
 
+#""" -------------- Extras -------------- """
 #Devolver en formato JSON
 """
 @app.get("/")
@@ -80,13 +98,12 @@ async def root():
 """incluinclude_in_schema=False, no incluira en la documentacion la ruta
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)"""
 
+#""" ------------------------------------ """
 
-
-
-
+#""" -------------- RUTA RAIZ (home / devolver plantilla) -------------- """
 # ruta raiz / indicar que utilizara HTML / ruta raiz es igual home en name
 @app.get("/", response_class=HTMLResponse, name="home")
-#async - funcion asincrona para enviar y resivir datos
+# async - funcion asincrona para enviar y resivir datos
 
 @app.get("/posts", include_in_schema=False, name="posts")
 
@@ -94,19 +111,27 @@ async def root():
 async def home(request: Request, db: Annotated[Session, Depends(get_db)]): 
         result = db.execute(select(models.Post))
         posts = result.scalars().all()
-        #Devolvemos la solicitud request con el archivo de platilla / diccionario de publicaciones / los titulos de cada pulicación
-                                                        #solicitud request / posts de diccionario posts / titulos a home
-        #return templates.TemplateResponse(request=request, name="index.html", {"request": request, "posts": "posts", "title": "Home"})
+        
+        # Devolvemos la solicitud request con el archivo de platilla / diccionario de publicaciones / los titulos de cada pulicación
+        # -----------------------------------------------------------solicitud request / posts de diccionario posts / titulos a home
+        # return templates.TemplateResponse(request=request, name="index.html", {"request": request, "posts": "posts", "title": "Home"})
         return templates.TemplateResponse("index.html", {"request": request, "posts": posts, "title": "Home"},)
 
+#""" --------------------------------------------------------------------- """
+
+
+#""" -------------- RUTA CREACION USUARIO -------------- """
 # Crear Usuarios
 @app.post(
     "/api/users",
     response_model=UserResponse, #modelo de respuesta 
-    status_code=status.HTTP_201_CREATED #indicando que el recurso se a creado
+    status_code=status.HTTP_201_CREATED, #indicando que el recurso se a creado
 )
 
-# Devolver usuario creado con exito
+#""" --------------------------------------------------------------------- """
+
+# -------------- FUNCION VERIFICAR SI USUARIO / EMAIL YA EXISTE --------------
+
 # Indicamos que la BD depende de una sesion creada o iniciada
 def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]): 
     # 1 - Verificar si ya existe el usuario
@@ -135,9 +160,13 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
             detail= "El email ya existe"
         )
 
+#""" --------------------------------------------------------------------- """
+
+# -------------- CREAR USUARIO --------------
 # Creando Usuario nuevo
     new_user = models.User(
-        username = user.username
+        username = user.username,
+        email=user.email,
     )
 # Crear usuario en la base de datos
     db.add(new_user)
@@ -145,8 +174,10 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     db.refresh(new_user) #refrescar y crar el nuevo usuario
     return new_user
 
-# Ruta por Id para buscar usuarios
-@app.get("/users/{user_id}", include_in_schema=False, response_model=UserResponse)
+
+#""" ############## RUTAS ############# """
+# ------------- RUTA POR ID BUSQUEDA DE USUARIOS ------------------
+@app.get("/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]): 
     
     # ejecutando una consulta , verificando si el modelo username es igual al username proporcionado
@@ -162,9 +193,15 @@ def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= "Usuario no encontrado")
 
 
-## get_ ID - de encontrar el usuario devuelve el diccionario de publicaciones
-@app.get("/api/users/{user_id}/posts", response_model=list[PostResponse])
-def get_user_posts(user_id: int, db: Annotated[Session, Depends(get_db)]):
+# ------------- RUTA POR ID BUSQUEDA DE PUBLICACIONES ------------------
+
+## De encontrar el usuario devuelve el diccionario de publicaciones
+@app.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts")
+def user_posts_page(
+    request: Request,
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+):
     result = db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
     if not user:
@@ -172,43 +209,60 @@ def get_user_posts(user_id: int, db: Annotated[Session, Depends(get_db)]):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-
     result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
     posts = result.scalars().all()
-    return posts
+    return templates.TemplateResponse(
+        request,
+        "user_posts.html",
+        {"posts": posts, "user": user, "title": f"{user.username}'s Posts"},
+    )
 
 
 # Responder con lista de respuesta de publicaciones en la siguiente ruta
-# Validar que cada publicacion coincida con el esquema de despuesta de publiacion
-@app.get("/api/post", response_model=list[PostResponse])
-def get_posts():
+# Validar que cada publicacion coincida con el modelo de despuesta de publiacion
+@app.get("/api/posts", response_model=list[PostResponse])
+def get_posts(db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Post))
+    posts = result.scalars().all()
     return posts
 
-# Crear Publicación
+# RUTA Crear Publicación
 @app.post(
     "/api/posts",
     response_model=PostResponse, #modelo de respuesta 
     status_code=status.HTTP_201_CREATED #indicando que el recurso se a creado
 )
 
-# Utilizando schema de creacion, validando con nuestra es quema  
-# y devolviendo un error 422, si no es valido
-def create_post(post: PostCreate): 
-    # De ser correcto se genera un nuevo ID manualmente (temporal)
-    new_id = max(p["id"] for p in posts) + 1 if posts else 1
-    # Creamos un dicionarion con los datos validades y necesarios
-    new_post = {
-        "id": new_id,
-        "author": post.author,
-        "title": post.title,
-        "content": post.content,
-        "date_posted": "Marzo 09, 2026",
-    }
-    # Agregando al dicionario de publiacaiones de arriba
-    posts.append(new_post)
-    # Devolvemos la nueva plublicación
+# ------------------ FUNCION CREACION DE PUBLICACION
+# Utilizando schema de creacion, validando con nuestra esquema  
+# Establecer sesion con BD y verificar primero si el usuario existe 
+def create_post(post: PostCreate, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == post.user_id))
+    user = result.scalars().first()
+    if not user:
+        # Devolviendo un error, si usuario no es valido
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Crear publicacion de acuerdo a sus atributos de clase
+    new_post = models.Post(
+        title=post.title,
+        content=post.content,
+        user_id=post.user_id,
+    )
+    # Agregar a la base de datos la nueva publicación
+    db.add(new_post)
+    # Confirmar 
+    db.commit()
+    # Regrescar la BD
+    db.refresh(new_post)
+    # Devolver la nueva publicaión
     return new_post
 
+
+# ---------------- RUTA DE PUBLICACION POR ID
 #Ruta por ID o parametro de ruta
 @app.get("/posts/{post_id}", include_in_schema=False)
 def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get_db)]):
@@ -227,8 +281,9 @@ def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get
 
 
 
+##""" -------------- VALIDACION Y ERRORES -------------- """
 
-""" CONTROLADOR DE EXCEPCIONES DE VALIDAACION RUTAS DEL NAVEGADOR """
+#""" CONTROLADOR DE EXCEPCIONES DE VALIDAACION RUTAS DEL NAVEGADOR """
 #Capture el control de excepciones
 @app.exception_handler(StarletteHTTPException)
 # se guarda y recibe en request: Request,.... 
@@ -262,7 +317,7 @@ def general_http_exception_handler(request: Request, exception: StarletteHTTPExc
         status_code=exception.status_code,
     )
 
-""" ERRORES DE VALIDADCION  RUTAS DE FASTAPI"""
+#""" ERRORES DE VALIDADCION  RUTAS DE FASTAPI"""
 #Detectando error de validacion de solicitudes
 @app.exception_handler(RequestValidationError)
 def validation_exception_handler(request: Request, exception: RequestValidationError):
