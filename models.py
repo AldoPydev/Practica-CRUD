@@ -29,8 +29,8 @@ class User(Base):
     )
 
     # Indicando - un mismo usuario puede tener multiples publicaciones
-    # conviertiendolas en una lista o directorio
-    posts: Mapped[list[Post]] = relationship(back_populates="author")
+    # conviertiendolas en una lista o directorio / relacionando al autor con sus publicaciones
+    posts: Mapped[list[Post]] = relationship(back_populates="author", cascade="all, delete-orphan")
 
     # Si el usuario a cargado una imagen de perfil  
     @property

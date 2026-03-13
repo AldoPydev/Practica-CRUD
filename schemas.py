@@ -29,7 +29,13 @@ class UserResponse(UserBase):
     image_file: str | None
     image_path: str
 
-
+# Esqueme de actualización
+class UserUpdate(BaseModel):
+    # datrtos proporciuonados por el usuario
+    username: str | None = Field(default=None, min_length=1, max_length=50)
+    email: str | None = Field(default=None, max_length=120)
+    image_file: str | None = Field(default=None, min_length=1, max_length=200)
+    
 
 """ Esquemas para publicaiones """
 # Crear esquema base con campos compartidos  entre la devoluacion y creacion de publicaciones
@@ -44,6 +50,16 @@ class PostCreate(PostBase):
     # Indicamos el ID del usuario, quien crea la publicacion
     user_id: int # TEMPORAL 
 
+
+
+# Esquema de actualización
+# El usuario podra actializar lo que necesite y no todos lo campos
+class PostUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=100)
+    content: str | None= Field(default=None, min_length=1)
+
+
+
 # Esquema de respuesta para las publicaciones que hereda de la clase base
 class PostResponse(PostBase):
     #indicar a Pydantic , puede leer clases con atributos además de diccionarios
@@ -53,4 +69,4 @@ class PostResponse(PostBase):
     id: int 
     user_id: int
     date_posted: datetime # asignar hora y fecha a la publicación
-    author: UserResponse # Opteniendo un JASON anidaddo con todos los datos del usuario
+    author: UserResponse # Opteniendo un JASON anidado con todos los datos del usuario

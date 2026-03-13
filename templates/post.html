@@ -1,72 +1,94 @@
 <!-- LLamamos el template base -->
-{% extends "base.html" %}
-
-{% block content %}
-  <article class="content-section py-3 px-4 mb-4">
-    <div class="d-flex align-items-start gap-4">
-        <!-- obtaner la imagen y el nombre de usuario para la publicacion  -->
-        <img class="rounded-circle article-img flex-shrink-0"
-            src="{{ post.author.image_path }} " 
-            alt="{{ post.author.username }}'s profile picture"
-           width="64"
-           height="64"
-           loading="lazy">
-      <div class="flex-grow-1">
-        <div class="article-metadata mb-2">
-            <!-- REDICCIONAMIENTO AL PERFIL DEL USUARIO  -->
-            <a class="me-2" href ="{{ url_for('user_posts', user_id=post.author.id) }}">{{ post.author.username  }}</a>
-            <!-- ESTABLECER FORMTO DE FECHA CON PYTHON  Mes /Dia /Año-->
-            <small class="text-body-secondary">{{ post.date_posted.strftime('%B %d, %Y') }}</small>
-        </div>
-
-            <!-- el titulo de la publicacion en home sera url_for para redireccionar 
-            a la ruta, y pasar el parametro del id de la publicacion correspondiente-->
-            <a class="article-title" href="{{ url_for('post_page', post_id=post.id) }}">{{ post.title }}</a>
-
-        <!-- LLamamos muestra el contenido del post -->
-        <p class="article-content">{{ post.content }}</p>
-
-
-        <!--  edit/delete options if the user is the author -->
-        <!-- TODO: Add user authentication and authorization -->
-        <div class="post-actions mt-3 pt-3 border-top">
-          <a class="btn btn-outline-secondary me-1" href="#">Edit Post</a>
-          <button type="button"
-                  class="btn btn-outline-danger"
-                  data-bs-toggle="modal"
-                  data-bs-target="#deleteModal">Delete Post</button>
-        </div>
-  
+{% extends "base.html" %} {% block content %}
+<article class="content-section py-3 px-4 mb-4">
+  <div class="d-flex align-items-start gap-4">
+    <!-- obtaner la imagen y el nombre de usuario para la publicacion  -->
+    <img
+      class="rounded-circle article-img flex-shrink-0"
+      src="{{ post.author.image_path }} "
+      alt="{{ post.author.username }}'s profile picture"
+      width="64"
+      height="64"
+      loading="lazy"
+    />
+    <div class="flex-grow-1">
+      <div class="article-metadata mb-2">
+        <!-- REDICCIONAMIENTO AL PERFIL DEL USUARIO  -->
+        <a
+          class="me-2"
+          href="{{ url_for('user_posts', user_id=post.author.id) }}"
+          >{{ post.author.username }}</a
+        >
+        <!-- ESTABLECER FORMTO DE FECHA CON PYTHON  Mes /Dia /Año-->
+        <small class="text-body-secondary"
+          >{{ post.date_posted.strftime('%B %d, %Y') }}</small
+        >
       </div>
-    </div>
-  </article>
 
-  <!-- Modal  de confirmacion eliminado-->
-  <div class="modal fade"
-       id="deleteModal"
-       tabindex="-1"
-       aria-labelledby="deleteModalLabel"
-       aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="deleteModalLabel">Delete Post?</h5>
-          <button type="button"
-                  class="btn-close"
-                  data-bs-dismiss="modal"
-                  aria-label="Close"></button>
-        </div>
-        <!-- TODO: <form action="#" method="post"> -->
-        <form action="#">
-          <div class="modal-body">¿Estás seguro de que quieres eliminar esta publicación?</div>
-          <div class="modal-footer">
-            <button type="button"
-                    class="btn btn-outline-secondary"
-                    data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-outline-danger">Delete</button>
-          </div>
-        </form>
+      <!-- el titulo de la publicacion en home sera url_for para redireccionar 
+            a la ruta, y pasar el parametro del id de la publicacion correspondiente-->
+      <a
+        class="article-title"
+        href="{{ url_for('post_page', post_id=post.id) }}"
+        >{{ post.title }}</a
+      >
+
+      <!-- LLamamos muestra el contenido del post -->
+      <p class="article-content">{{ post.content }}</p>
+
+      <!--  edit/delete options if the user is the author -->
+      <!-- TODO: Add user authentication and authorization -->
+      <div class="post-actions mt-3 pt-3 border-top">
+        <a class="btn btn-outline-secondary me-1" href="#">Edit Post</a>
+        <button
+          type="button"
+          class="btn btn-outline-danger"
+          data-bs-toggle="modal"
+          data-bs-target="#deleteModal"
+        >
+          Delete Post
+        </button>
       </div>
     </div>
   </div>
+</article>
+
+<!-- Modal  de confirmacion eliminado-->
+<div
+  class="modal fade"
+  id="deleteModal"
+  tabindex="-1"
+  aria-labelledby="deleteModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Delete Post?</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <!-- TODO: <form action="#" method="post"> -->
+      <form action="#">
+        <div class="modal-body">
+          ¿Estás seguro de que quieres eliminar esta publicación?
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-outline-danger">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock content %}

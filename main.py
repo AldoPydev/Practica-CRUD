@@ -19,7 +19,14 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 #----------------------- Importar Schemas
-from schemas import PostCreate, PostResponse, UserCreate, UserResponse
+from schemas import (
+    PostCreate, 
+    PostResponse, 
+    UserCreate, 
+    UserResponse, 
+    PostUpdate,
+    UserUpdate
+    )
 
 #----------------------- Importar Modelos
 import models
@@ -55,17 +62,7 @@ templates = Jinja2Templates(directory="templates")
 
 #""" ------------------------------------ """
 
-#""" -------------- VERIFICAR LA CONEXION CON BD -------------- """
-@app.get("/db-check")
-def check_db():
-    try:
-        # Intentamos obtener una sesión
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        return {"status": "ok", "message": "Database is connected"}
-    except Exception as e:
-        return {"status": "error", "details": str(e)}
-#""" ------------------------------------ """
+
 
 """# directorio de ejemplo para publicaciones
 posts: list[dict] = [
@@ -119,8 +116,20 @@ async def home(request: Request, db: Annotated[Session, Depends(get_db)]):
 
 #""" --------------------------------------------------------------------- """
 
+# ################# RUTAS ##################
 
-#""" -------------- RUTA CREACION USUARIO -------------- """
+#""" -------------- VERIFICAR LA CONEXION CON BD -------------- """
+@app.get("/db-check")
+def check_db():
+    try:
+        # Intentamos obtener una sesión
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "message": "Database is connected"}
+    except Exception as e:
+        return {"status": "error", "details": str(e)}
+#""" ------------------------------------ """
+#""" -------------- RUTAS DE USUARIO -------------- """
 # Crear Usuarios
 @app.post(
     "/api/users",
@@ -174,8 +183,13 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     db.refresh(new_user) #refrescar y crar el nuevo usuario
     return new_user
 
+# ------------- RUTA MOSTRAR USUARIOS ------------------
+@app.get("/api/users", response_model=list[UserResponse])
+def get_users(db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User))
+    users = result.scalars().all()
+    return users
 
-#""" ############## RUTAS ############# """
 # ------------- RUTA POR ID BUSQUEDA DE USUARIOS ------------------
 @app.get("/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]): 
@@ -193,8 +207,74 @@ def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= "Usuario no encontrado")
 
 
-# ------------- RUTA POR ID BUSQUEDA DE PUBLICACIONES ------------------
+# ------------- RUTA DE ACTUALIZACION DE USUARIO
+# Actualizar usuario por ID
+@app.patch("/api/users/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    db: Annotated[Session, Depends(get_db)],
+):
+    # Verificar que el usuario a modificar existe 
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Uasuario no existente",
+        )
+    # ----- VERIFICAR QUE NO CAMBIEN NOMBRE O EMAIL POR UNO QUE YA EXISTE 
+    if user_update.username is not None and user_update.username != user.username:
+        result = db.execute(
+            select(models.User).where(models.User.username == user_update.username),
+        )
+        existing_user = result.scalars().first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre de usuario ya existe",
+            )
 
+    if user_update.email is not None and user_update.email != user.email:
+        result = db.execute(
+            select(models.User).where(models.User.email == user_update.email),
+        )
+        existing_email = result.scalars().first()
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email ya existe",
+            )
+            
+    # Verificar campo por cambio si fue actualizado o no para cambiar solo los actualizados
+    if user_update.username is not None:
+        user.username = user_update.username
+    if user_update.email is not None:
+        user.email = user_update.email
+    if user_update.image_file is not None:
+        user.image_file = user_update.image_file
+
+    # Confirmar actualización en base de datos, refrescar y devolver usuraio 
+    db.commit()
+    db.refresh(user)
+    return user
+
+# Ruta de aliminación de usuarios
+@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    db.delete(user)
+    db.commit()
+
+# ------------- RUTAS DE PUBLICACIONES ------------------
+# BUSQUEDA DE PUBLICACION POR ID 
 ## De encontrar el usuario devuelve el diccionario de publicaciones
 @app.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts")
 def user_posts_page(
@@ -264,7 +344,7 @@ def create_post(post: PostCreate, db: Annotated[Session, Depends(get_db)]):
 
 # ---------------- RUTA DE PUBLICACION POR ID
 #Ruta por ID o parametro de ruta
-@app.get("/posts/{post_id}", include_in_schema=False)
+@app.get("/api/posts/{post_id}")
 def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get_db)]):
 #se realiza la consulta de publicaciones en la BD por ID
     result = db.execute(select(models.Post).where(models.Post.id == post_id))
@@ -279,8 +359,83 @@ def post_page(request: Request, post_id: int, db: Annotated[Session, Depends(get
     #generar excepcyion http 404 indicando que no se encontro la busqueda
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publicación no encontrada")
 
+#---------------- ACTUALIZAR PUBLICACION COMPLETA 
+#Ruta de actualizacion de post - reutilizando postcreate por tener todo ya hecho
+@app.put("/api/posts/{post_id}", response_model=PostResponse)
+def update_post_full(request: Request, post_id: int, post_data: PostCreate,db: Annotated[Session, Depends(get_db)]):
+#se realiza la consulta de publicaciones en la BD por ID
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    # 1° Verificar si la publicacion ya existe 
+    if not post:
 
+        #generar excepcyion http 404 indicando que no se encontro la busqueda
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publicación no encontrada")
+#Verificar el usuario que hace la modificacion es el mismo autor y existe
+    if post_data.user_id != post.user_id:
+        result = db.execute(select(models.User).where(models.User.id == post_data.user_id))
+        user = result.scalars().first()
+        if not user:
+            # Devolviendo un error, si usuario no es valido
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+            
+    # Realizar actualización de publicación en BD
+    post.title = post_data.title 
+    post.content = post_data.content 
+    post.user_id = post_data.user_id 
+    # Verificar actualizacion en BD
+    db.commit()
+    # Actualizar BD
+    db.refresh(post)
+    # Devolver publicacion
+    return post
 
+#---------------- ACTUALIZAR PUBLICACION PARCIAL
+#Ruta de actualizacion de post solo campos deseados
+@app.patch("/api/posts/{post_id}", response_model=PostResponse)
+def update_post_partial(request: Request, post_id: int, post_data: PostUpdate, db: Annotated[Session, Depends(get_db)]):
+#se realiza la consulta de publicaciones en la BD por ID
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+    # 1° Verificar si la publicacion ya existe 
+    if not post:
+
+        #generar excepcyion http 404 indicando que no se encontro la busqueda
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publicación no encontrada")
+
+    # Actualizar solo los campos deseados / Solo optener lo que se cambio con model_dump(exclude_unset=True)
+    update_data = post_data.model_dump(exclude_unset=True)
+    # Nos devuelve un dicionario al cual recorremos para obtener el campo y el valor modificados
+    for field, value in update_data.items():
+        # Devolviendo una publicación solo con los valores modificados
+        setattr(post, field, value)
+
+    # Verificar actualizacion en BD
+    db.commit()
+    # Actualizar BD
+    db.refresh(post)
+    # Devolver publicacion
+    return post
+
+#---------------- ELIMINACIÓN DE PUBLICACION 
+# Determinando un codigo de estado para confirmar eliminación
+@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(request: Request, post_id: int, db: Annotated[Session, Depends(get_db)]):
+#se realiza la consulta de publicaciones en la BD por ID
+    result = db.execute(select(models.Post).where(models.Post.id == post_id))
+    post = result.scalars().first()
+#si la publicacion no existe
+    if not post:
+        #generar excepcyion http 404 indicando que no se encontro la busqueda
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publicación no encontrada")
+    
+    # Eliminando publicacion de la BD
+    db.delete(post)
+    db.commit()
+    
 ##""" -------------- VALIDACION Y ERRORES -------------- """
 
 #""" CONTROLADOR DE EXCEPCIONES DE VALIDAACION RUTAS DEL NAVEGADOR """
