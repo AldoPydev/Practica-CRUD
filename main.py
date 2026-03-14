@@ -1,5 +1,5 @@
 #Importacion modulo asincrono
-import asyncio
+import asyncio, os
 from typing import Annotated
 #Importar FastAPI
 from fastapi import FastAPI, Request
@@ -74,7 +74,8 @@ app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
 
 #Establecer una parametro de solicitud, Jinja2 requiere
 async def home(request: Request, db: Annotated[Session, Depends(get_db)]): 
-        result = db.execute(select(models.Post))
+                                                # Indicar que muestra las publiaciones, el más nuevo primero 
+        result = db.execute(select(models.Post).order_by(models.Post.date_posted.desc()))
         posts = result.scalars().all()
         
         # Devolvemos la solicitud request con el archivo de platilla / diccionario de publicaciones / los titulos de cada pulicación
@@ -87,7 +88,7 @@ async def home(request: Request, db: Annotated[Session, Depends(get_db)]):
 # ################# RUTAS ##################
 
 #""" -------------- VERIFICAR LA CONEXION CON BD -------------- """
-@app.get("/db-check")
+@app.get("/db-check", include_in_schema=False)
 async def check_db():
     try:
         # Intentamos obtener una sesión
@@ -113,7 +114,7 @@ async def user_posts_page(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    result = db.execute(select(models.Post).where(models.Post.user_id == user_id))
+    result = db.execute(select(models.Post).where(models.Post.user_id == user_id).order_by(models.Post.date_posted.desc()))
     posts = result.scalars().all()
     return templates.TemplateResponse(
         request,

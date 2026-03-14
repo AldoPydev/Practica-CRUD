@@ -31,13 +31,11 @@ router = APIRouter()
 
 # ------------- RUTAS DE PUBLICACIONES ------------------
 
-
-
 # Responder con lista de respuesta de publicaciones en la siguiente ruta
 # Validar que cada publicacion coincida con el modelo de despuesta de publiacion
 @router.get("", response_model=list[PostResponse])
 async def get_posts(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Post))
+    result = db.execute(select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.date_posted.desc()))
     posts = result.scalars().all()
     return posts
 
